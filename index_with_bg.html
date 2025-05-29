@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zarr Consol Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: url("https://i.pinimg.com/originals/10/2f/aa/102faa90134c376c79688412fe154d46.gif") no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      padding: 10px;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #555;
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 60px);
+      grid-template-rows: repeat(2, 60px);
+      gap: 10px;
+      user-select: none;
+      margin-bottom: 20px;
+    }
+    .btn {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      background: #333;
+      color: white;
+      border: 2px solid #555;
+      border-radius: 10px;
+      text-align: center;
+      line-height: 60px;
+      cursor: pointer;
+    }
+    .btn:active {
+      background: #555;
+    }
+    #info {
+      margin-bottom: 10px;
+    }
+    #score {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    #gameover {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #222;
+      padding: 20px 40px;
+      border: 3px solid #f00;
+      border-radius: 10px;
+      color: #f00;
+      font-size: 32px;
+      display: none;
+      text-align: center;
+      z-index: 1000;
+    }
+    #restartBtn {
+      margin-top: 20px;
+      background: #f00;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 20px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    #restartBtn:hover {
+      background: #a00;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zarr Consol Game</h1>
+  <div id="info">ketika cowo setia sama satu cewe.</div>
+  <div id="score">Score: 0</div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div class="controls">
+    <div></div>
+    <div class="btn" data-key="ArrowUp">↑</div>
+    <div></div>
+    <div class="btn" data-key="ArrowLeft">←</div>
+    <div class="btn" data-key="ArrowDown">↓</div>
+    <div class="btn" data-key="ArrowRight">→</div>
+  </div>
+
+  <div id="gameover">
+    Game Over<br/><div>maaf anda tidak cukup satu cewe</div>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <script>
+    const enemyEmojis = ["🧕", "👸", "🤰", "🙆‍♀️"];
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const gameOverDiv = document.getElementById("gameover");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const player = { x: 200, y: 200, size: 20, speed: 3 };
+    const keys = {};
+    let enemies = [];
+    let gameOver = false;
+    let score = 0;
+    let scoreInterval;
+
+    function resetGame() {
+      player.x = 200;
+      player.y = 200;
+      enemies = [];
+      gameOver = false;
+      score = 0;
+      scoreDisplay.textContent = "Score: 0";
+      gameOverDiv.style.display = "none";
+      startScoreCounter();
+      draw();
+    }
+
+    function startScoreCounter() {
+      if(scoreInterval) clearInterval(scoreInterval);
+      scoreInterval = setInterval(() => {
+        if (!gameOver) {
+          score++;
+          scoreDisplay.textContent = "Score: " + score;
+        }
+      }, 100);
+    }
+
+    document.addEventListener("keydown", (e) => keys[e.key] = true);
+    document.addEventListener("keyup", (e) => keys[e.key] = false);
+
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys[btn.dataset.key] = true;
+      });
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        keys[btn.dataset.key] = false;
+      });
+      btn.addEventListener('mousedown', () => keys[btn.dataset.key] = true);
+      btn.addEventListener('mouseup', () => keys[btn.dataset.key] = false);
+      btn.addEventListener('mouseleave', () => keys[btn.dataset.key] = false);
+    });
+
+    function spawnEnemy() {
+      const size = 20;
+      const edge = Math.floor(Math.random() * 4);
+      let x, y;
+      switch (edge) {
+        case 0: x = Math.random() * 400; y = 0; break;
+        case 1: x = 400; y = Math.random() * 400; break;
+        case 2: x = Math.random() * 400; y = 400; break;
+        case 3: x = 0; y = Math.random() * 400; break;
+      }
+      const dx = (player.x - x) / 100;
+      const dy = (player.y - y) / 100;
+      const emoji = enemyEmojis[Math.floor(Math.random() * enemyEmojis.length)];
+      enemies.push({ x, y, size, dx, dy, emoji });
+    }
+
+    function update() {
+      if (keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
+      if (keys["ArrowDown"] || keys["s"]) player.y += player.speed;
+      if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+      if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+
+      player.x = Math.min(Math.max(0, player.x), canvas.width - player.size);
+      player.y = Math.min(Math.max(0, player.y), canvas.height - player.size);
+
+      enemies.forEach(e => {
+        e.x += e.dx;
+        e.y += e.dy;
+        if (
+          player.x < e.x + e.size &&
+          player.x + player.size > e.x &&
+          player.y < e.y + e.size &&
+          player.y + player.size > e.y
+        ) {
+          gameOver = true;
+          clearInterval(scoreInterval);
+          gameOverDiv.style.display = "block";
+        }
+      });
+
+      if (!gameOver) requestAnimationFrame(draw);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "20px sans-serif";
+      ctx.fillText("👼", player.x, player.y + player.size);
+      ctx.font = "20px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      enemies.forEach(e => {
+        ctx.fillText(e.emoji, e.x, e.y);
+      });
+      update();
+    }
+
+    setInterval(() => {
+      if (!gameOver) spawnEnemy();
+    }, 1000);
+
+    restartBtn.addEventListener("click", () => {
+      resetGame();
+    });
+
+    resetGame();
+  </script>
+</body>
+</html>
